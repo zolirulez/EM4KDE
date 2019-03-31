@@ -6,7 +6,6 @@ close all
 load faithful
 data = X;
 [N,D] = size(data);
-dataShuffled = data;
 idx = randperm(N);
 data = data(idx,:);
 nfolds = 10;
@@ -14,6 +13,14 @@ data = data(1:N-rem(N,10),:); % To make data divisible by 10
 [N,D] = size(data);
 N_test = N/nfolds;
 N_train = (nfolds-1) * N_test;
+
+% Calculation of distances in advance
+delta_data = repmat(data,1,N);
+for it = 1:N
+    delta_data(:,(it-1)*D+1:it*D) =...
+        delta_data(:,(it-1)*D+1:it*D) - data(it,:);
+end
+
 %% Initialize parameters
 K = N_train; % try with different parameters
 pi_k = 1/K;
@@ -28,33 +35,28 @@ r = zeros(N_test,K);
 Sigma = eye(D);
 Sigmas = zeros(2,2,nfolds);
 log_likelihood = zeros(nfolds, 1);
-CV = cvpartition(N, 'kfold',nfolds);
 for iter = 1:max_iter
     fprintf('Iteration: %d\n', iter);
     %% Compute responsibilities
     for fold = 1:nfolds
         R = chol(Sigma,'upper');
         gain = 1/((2*pi)^(D/2)*det(R))/N_train;
-        mu = data(CV.training(fold),:);
-        data2 = data(CV.test(fold),:);
-        for k = 1:K
-            m = (data2 - mu(k,:))/R;
-            r(:,k) = gain*exp(-0.5*sum(m.*m,2));
-        end
+        delta_x = [delta_data((fold-1)*N_test+1:fold*N_test,1:(fold-1)*N_test*D)...
+            delta_data((fold-1)*N_test+1:fold*N_test,fold*N_test*D+1:end)];
+        delta_x = reshape(delta_x,N_train*N_test,D);
+        m = delta_x/R;
+        r = reshape(gain*exp(-0.5*sum(m.*m,2)),N_test,N_train);
         rn = r./sum(r,2);
         %% Update parameters
-        Sigma_sum = zeros(2,2);
-        for k = 1:K
-            Sigma_sum = Sigma_sum + ((rn(:,k).*(data2-mu(k,:)))'*(data2-mu(k,:)));
-        end
-        Sigmas(:,:,fold) = 1/N_test*Sigma_sum;
-        
+        Sigmas(:,:,fold) = 1/N_test*((reshape(rn,N_train*N_test,1).*delta_x)'*delta_x);
         %% Compute log-likelihood of data
-        %log_likelihood(fold) = sum(log(sum(r,2)),1);
-        tmp_var = zeros(N_test, N_train);
-        for k = 1:K
-            tmp_var(:,k) = tmp_var(:,k)  + mvnpdf(data2, mu(k,:), Sigmas(:,:,fold)) * pi_k;
-        end
+        R = chol(Sigma,'upper');
+        gain = 1/((2*pi)^(D/2)*det(R))/N_train;
+        delta_x = [delta_data((fold-1)*N_test+1:fold*N_test,1:(fold-1)*N_test*D)...
+            delta_data((fold-1)*N_test+1:fold*N_test,fold*N_test*D+1:end)];
+        delta_x = reshape(delta_x,N_train*N_test,D);
+        m = delta_x/R;
+        tmp_var = reshape(gain*exp(-0.5*sum(m.*m,2)),N_test,N_train);
         log_likelihood(fold) = sum(log(sum(tmp_var,2)),1);
     end
     % Extract the maximum likelihood sigma of the 10 folds
@@ -85,7 +87,7 @@ elseif (D == 3)
     plot3(data(:, 1), data(:, 2), data(:, 3), '.');
 end % if
 hold on
-for k = 1:K
-    plot_normal(mu(k,:), Sigma);
+for it = 1:N
+    plot_normal(data(it,:), Sigma);
 end % for
 hold off
