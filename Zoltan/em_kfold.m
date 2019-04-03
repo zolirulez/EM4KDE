@@ -3,8 +3,8 @@ close all
 
 %% Load data
 load clusterdata2d % gives 'data' -- also try with other datasets!
-%load faithful
-%data = X;
+% load faithful
+% data = X;
 [N,D] = size(data);
 dataShuffled = data;
 idx = randperm(N);
@@ -23,12 +23,13 @@ pi_k = 1/K;
 Sigma = eye(D);
 
 %% Loop until you're happy
-max_iter = 500; % XXX: you should find a better convergence check than a max iteration counter
+max_iter = 200; % XXX: you should find a better convergence check than a max iteration counter
 r = zeros(N_test,K);
 Sigma = eye(D);
 Sigmas = zeros(2,2,nfolds);
 log_likelihood = zeros(nfolds, 1);
 CV = cvpartition(N, 'kfold',nfolds);
+tic
 for iter = 1:max_iter
     fprintf('Iteration: %d\n', iter);
     %% Compute responsibilities
@@ -65,12 +66,13 @@ for iter = 1:max_iter
     Sigma = Sigmas(:,:,maxIdx);
     log_likelihood = zeros(nfolds,1);
     % End...
-    if iter > 1
-        if abs(diff(log_lh(iter-1:iter)))<1e-5
-            break;
-        end
-    end
+%     if iter > 1
+%         if abs(diff(log_lh(iter-1:iter)))<1e-5
+%             break;
+%         end
+%     end
 end % for
+toc
 %% Plot log-likelihood -- did we converge?
 figure(1)
 plot(log_lh);

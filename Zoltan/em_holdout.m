@@ -2,14 +2,17 @@
 %close all
 
 %% Load data
-load clusterdata2d % gives 'data' -- also try with other datasets!
-% load faithful
-% data = X;
+% load clusterdata2d % gives 'data' -- also try with other datasets!
+load faithful
+data = X;
 rowSize = size(data,1);
-dataShuffled = data;
 idx = randperm(rowSize);
 data = data(idx,:);
-cut =525 ;
+idx = randperm(rowSize);
+data = data(idx,:);
+idx = randperm(rowSize);
+data = data(idx,:);
+cut = 170;
 data1 = data(1:cut,:);
 data2 = data(cut+1:end,:);
 [Ntrain, D] = size(data1);
@@ -26,40 +29,40 @@ mu = data1;
 Sigma = eye(D);
 
 %% Loop until you're happy
-max_iter = 1000; % XXX: you should find a better convergence check than a max iteration counter
+max_iter = 5000; % XXX: you should find a better convergence check than a max iteration counter
 log_likelihood = NaN(max_iter, 1);
 r = zeros(Ntest,K);
-tic
-for iter = 1:max_iter
-    %% Compute responsibilities
-    for k = 1:K
-        r(:,k) = pi_k(k)*mvnpdf(data2, mu(k,:), Sigma);
-    end
-    rn = r./sum(r,2);
-    Nk = sum(rn,1);
-    %% Update parameters
-    Sigma_new = zeros(2,2);
-    for k = 1:K
-        Sigma_new = Sigma_new + 1/Ntest*((rn(:,k).*(data2-mu(k,:)))'*(data2-mu(k,:)));
-    end
-    Sigma = Sigma_new;
-    
-    %% Compute log-likelihood of data
-    for rowSize = Ntest
-        log_likelihood(iter) = sum(log(sum(r,2)),1);
-    end
-    
-    % End...
-    if iter > 1
-        if abs(diff(log_likelihood(iter-1:iter)))<1e-5
-            break;
-        end
-    end
-end % for
-toc
-Sigma
-% Let Sigma_k be the identity matrix:
-Sigma = eye(D);
+% tic
+% for iter = 1:max_iter
+%     %% Compute responsibilities
+%     for k = 1:K
+%         r(:,k) = pi_k(k)*mvnpdf(data2, mu(k,:), Sigma);
+%     end
+%     rn = r./sum(r,2);
+%     Nk = sum(rn,1);
+%     %% Update parameters
+%     Sigma_new = zeros(2,2);
+%     for k = 1:K
+%         Sigma_new = Sigma_new + 1/Ntest*((rn(:,k).*(data2-mu(k,:)))'*(data2-mu(k,:)));
+%     end
+%     Sigma = Sigma_new;
+%     
+%     %% Compute log-likelihood of data
+%     for rowSize = Ntest
+%         log_likelihood(iter) = sum(log(sum(r,2)),1);
+%     end
+%     
+%     % End...
+%     if iter > 1
+%         if abs(diff(log_likelihood(iter-1:iter)))<1e-5
+%             break;
+%         end
+%     end
+% end % for
+% toc
+% Sigma
+% % Let Sigma_k be the identity matrix:
+% Sigma = eye(D);
 tic
 for iter = 1:max_iter
     %% Compute responsibilities
@@ -83,12 +86,12 @@ for iter = 1:max_iter
         log_likelihood(iter) = sum(log(sum(r,2)),1);
     end
     
-    % End...
-    if iter > 1
-        if abs(diff(log_likelihood(iter-1:iter)))<1e-5
-            break;
-        end
-    end
+%     % End...
+%     if iter > 1
+%         if abs(diff(log_likelihood(iter-1:iter)))<1e-5
+%             break;
+%         end
+%     end
 end % for
 toc
 Sigma
@@ -109,3 +112,8 @@ for k = 1:K
     plot_normal(mu(k,:), Sigma);
 end % for
 hold off
+
+%% Plot distribution
+figure(6)
+gm = gmdistribution(data,Sigma);
+fsurf(@(x,y)reshape(pdf(gm,[x(:),y(:)]),size(x)),[-2 2])
