@@ -2,16 +2,28 @@ clear all
 close all
 
 %% Load data
-% load clusterdata2d % gives 'data' -- also try with other datasets!
-load faithful
-data = X;
-data = (data - mean(data))/cov(data);
+dataswitch = 1;
+if dataswitch
+    load clusterdata2d
+%     load phT
+%     data = normalstates;
+%     data = (data - mean(data))/cov(data);
+else
+    load faithful
+    data = X;
+    data = (data - mean(data))/cov(data);
+end
 [N,D] = size(data);
-idx = randperm(N);
-data = data(idx,:);
-data = data(1:N-rem(N,20),:); % To make data divisible by 10
-nfolds = 5;
-% data = [1 1; 1 -1; -1 1; -1 -1];
+for it = 1:3
+    idx = randperm(N);
+    data = data(idx,:);
+end
+data = data(1:N-rem(N,20),:); % To make data divisible by folds
+if dataswitch
+    nfolds = 10;
+else
+    nfolds = 5;
+end
 [N,D] = size(data);
 N_test = N/nfolds;
 N_train = (nfolds-1) * N_test;
@@ -32,7 +44,7 @@ pi_k = 1/K;
 Sigma = eye(D);
 
 %% Loop until you're happy
-max_iter = 500; 
+max_iter = 1000; 
 % r = zeros(N_test,K);
 % Sigma = eye(D);
 % Sigmas = zeros(2,2,nfolds);
@@ -69,24 +81,25 @@ max_iter = 500;
 %     end
 %     % Extract the maximum likelihood sigma of the 10 folds
 %     [maxLL, maxIdx] = max(log_likelihood);
-%     log_lh(iter) = maxLL;
+%     LL(iter) = maxLL;
 %     
 %     % Put the MLE of sigma
 %     Sigma = Sigmas(:,:,maxIdx);
 %     log_likelihood = zeros(nfolds,1);
 %     % End...
-% %     if iter > 1
-% %         if abs(diff(log_lh(iter-1:iter)))<1e-5
-% %             break;
-% %         end
-% %     end
+%     if iter > 5
+%         if norm(pdist(LL(iter-4:iter)'),'inf') < 1e-12 % diff is faster!!
+%             break;
+%         end
+%     end
 % end % for
 % toc
 % Sigma
-r = zeros(N_test,K);
+r_vector = zeros(N_test,K,nfolds);
 Sigma = eye(D);
-Sigmas = zeros(2,2,nfolds);
+Sigmas = zeros(D,D,nfolds);
 log_likelihood = zeros(nfolds, 1);
+maxIdx = 1;
 tic
 % Preparation of data
 delta_x_ver3 = cell(nfolds,1);
@@ -98,43 +111,44 @@ for fold = 1:nfolds
         delta_x_ver2(:,(iter2-1)*N_train+1:iter2*N_train) = delta_x_ver1(:,iter2:D:end);
     end
     delta_x_ver3{fold} = reshape(delta_x_ver2,N_train*N_test,D);
+    R = chol(Sigma,'upper');
+    gain = 1/((2*pi)^(D/2)*det(R))/N_train;
+    m = delta_x_ver3{fold}/R;
+    r_vector(:,:,fold) = reshape(gain*exp(-0.5*sum(m.*m,2)),N_test,N_train);
 end
 for iter = 1:max_iter
-    fprintf('Iteration: %d\n', iter);
+    if rem(iter,100) == 0
+        fprintf('Iteration: %d\n', iter);
+    end
     %% Compute responsibilities
     for fold = 1:nfolds
-        R = chol(Sigma,'upper');
-        gain = 1/((2*pi)^(D/2)*det(R))/N_train;
-        m = delta_x_ver3{fold}/R;
-        r = reshape(gain*exp(-0.5*sum(m.*m,2)),N_test,N_train);
-        rn = r./sum(r,2);
+        rn = r_vector(:,:,maxIdx)./sum(r_vector(:,:,maxIdx),2);
         %% Update parameters
         Sigmas(:,:,fold) = 1/N_test*((reshape(rn,N_train*N_test,1).*delta_x_ver3{fold})'*delta_x_ver3{fold});
         %% Compute log-likelihood of data
-        R = chol(Sigma,'upper');
+        R = chol(Sigmas(:,:,fold),'upper');
         gain = 1/((2*pi)^(D/2)*det(R))/N_train;
         m = delta_x_ver3{fold}/R;
-        tmp_var = reshape(gain*exp(-0.5*sum(m.*m,2)),N_test,N_train);
-        log_likelihood(fold) = sum(log(sum(tmp_var,2)),1);
+        r_vector(:,:,fold) = reshape(gain*exp(-0.5*sum(m.*m,2)),N_test,N_train);
+        log_likelihood(fold) = sum(log(sum(r_vector(:,:,fold),2)),1);
     end
     % Extract the maximum likelihood sigma of the 10 folds
     [maxLL, maxIdx] = max(log_likelihood);
-    log_lh(iter) = maxLL;
+    LL(iter) = maxLL;
     
     % Put the MLE of sigma
     Sigma = Sigmas(:,:,maxIdx);
-    log_likelihood = zeros(nfolds,1);
     % End...
-%     if iter > 1
-%         if abs(diff(log_lh(iter-1:iter)))<1e-5
-%             break;
-%         end
-%     end
+    if iter > 5
+        if norm(pdist(LL(iter-4:iter)'),'inf') < 1e-12 % diff is faster!!
+            break;
+        end
+    end
 end % for
 toc
 %% Plot log-likelihood -- did we converge?
 figure(1)
-plot(log_lh);
+plot(LL);
 xlabel('Iterations'); ylabel('Log-likelihood');
 title('Log-likelihood of each fold')
 
@@ -154,4 +168,8 @@ hold off
 %% Plot distribution
 figure(3)
 gm = gmdistribution(data,Sigma);
-fsurf(@(x,y)reshape(pdf(gm,[x(:),y(:)]),size(x)),[-8 6 -0.6 0.6])
+if dataswitch
+    fsurf(@(x,y)reshape(pdf(gm,[x(:),y(:)]),size(x)),[-2 2 -2 2])
+else
+    fsurf(@(x,y)reshape(pdf(gm,[x(:),y(:)]),size(x)),[-8 6 -0.6 0.6])
+end
