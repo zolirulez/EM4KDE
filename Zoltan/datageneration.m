@@ -1,5 +1,4 @@
 % Normal dataset
-clearvars
 close all
 resolution = 25;
 P = linspace(45,100,resolution)*1e5;
@@ -15,15 +14,15 @@ for p = 1:length(P)
         normalstates = [normalstates; P(p),H(h),T(h,p)];
         if rem(p,2)
             if rem(h,2)
-                Tf(h,p) = T(h,p)+2;
+                Tf(h,p) = T(h,p)+2; %2
             else
-                Tf(h,p) = T(h,p)-5;
+                Tf(h,p) = T(h,p)-2; 
             end
         else
             if rem(h,2)
-                Tf(h,p) = T(h,p)-2;
+                Tf(h,p) = T(h,p)-2; %2
             else
-                Tf(h,p) = T(h,p)+5;
+                Tf(h,p) = T(h,p)+2;
             end
         end
         faultystates = [faultystates; P(p),H(h),Tf(h,p)];

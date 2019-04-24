@@ -1,31 +1,30 @@
-clear all
-close all
-
 %% Load data
-faultswitch = 0;
-dataswitch = 1;
-if dataswitch
-    %     load clusterdata2d
-    load phT
-    if faultswitch
-        data = faultystates;
-    else
-        data = normalstates;
-    end
-    %     data = (data - mean(data))/cov(data);
-else
-    load faithful
-    data = X;
-%     data = (data - mean(data))/cov(data);
+switch dataswitch
+    case 0
+        load phT
+        if faultswitch
+            data = faultystates;
+        else
+            data = normalstates;
+        end
+    case 1
+        load faithful
+        data = X;
+    case 2
+        load clusterdata2d
 end
+%     data = (data - mean(data))/cov(data);
 [N,D] = size(data);
 idx = randperm(N);
 data = data(idx,:);
 data = data(1:N-rem(N,10),:); % To make data divisible by folds
-if dataswitch
-    nfolds = 10;
-else
-    nfolds = 5;
+switch dataswitch
+    case 0
+        nfolds = 10;
+    case 1
+        nfolds = 5;
+    case 2
+        nfolds = 10;
 end
 [N,D] = size(data);
 N_test = N/nfolds;
@@ -139,12 +138,12 @@ for init = 1:initializations
         if rem(iter,100) == 0
             fprintf('Iteration: %d\n', iter);
         end
-        %% Compute responsibilities
+        % Compute responsibilities
         for fold = 1:nfolds
             rn = r_vector(:,:,maxIdx)./sum(r_vector(:,:,maxIdx),2);
-            %% Update parameters
+            % Update parameters
             Sigmas(:,:,fold) = 1/N_test*((reshape(rn,N_train*N_test,1).*delta_x_ver3{fold})'*delta_x_ver3{fold});
-            %% Compute log-likelihood of data
+            % Compute log-likelihood of data
             R = chol(Sigmas(:,:,fold),'upper');
             gain = 1/((2*pi)^(D/2)*det(R))/N_train;
             m = delta_x_ver3{fold}/R;
@@ -172,32 +171,14 @@ end % for initilizations
 [maxLL, maxIdx] = max(LL(end,:));
 Sigma = Sigma_init{maxIdx};
 toc
-%% Plot log-likelihood -- did we converge?
-figure(1)
-plot(LL);
-xlabel('Iterations'); ylabel('Log-likelihood');
-title('Log-likelihood of each fold')
 
-%% Plot data
-figure(2);
-if (D == 2)
-    plot(data(:, 1), data(:, 2), '.');
-elseif (D == 3)
-    plot3(data(:, 1), data(:, 2), data(:, 3), '.');
-end % if
-hold on
-for it = 1:N
-    plot_normal(data(it,:), Sigma);
-end % for
-hold off
-
-%% Plot distribution
-if (D ==2)
-    figure(3)
-    gm = gmdistribution(data,Sigma);
-    if dataswitch
-        fsurf(@(x,y)reshape(pdf(gm,[x(:),y(:)]),size(x)),[-2 2 -2 2])
-    else
-        fsurf(@(x,y)reshape(pdf(gm,[x(:),y(:)]),size(x)),[-1 5.5 -20 100])
-    end
+switch dataswitch
+    case 0
+        if faultswitch
+            SigmaFaulty = Sigma;
+            save('SigmaFaulty','SigmaFaulty');
+        else
+            SigmaNormal = Sigma;
+            save('SigmaNormal','SigmaNormal');
+        end
 end
