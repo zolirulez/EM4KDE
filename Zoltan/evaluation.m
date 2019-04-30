@@ -33,9 +33,9 @@ title(['ROC for 5 degrees deviation,noisy, AUC: ' num2str(AUC)])
 
 % Finding optimal threshold
 figure(5)
-plot(T,X)
-hold on
 plot(T,1-Y)
+hold on
+plot(T,X)
 hold off
 xlabel('probability threshold')
 % Y: TPR, X: FPR

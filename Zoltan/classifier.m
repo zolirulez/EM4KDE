@@ -7,6 +7,7 @@ evaldata = [normalstates; faultystates2; faultystates5];
 N = length(data);
 D = size(data,2);
 N_eval = length(evaldata);
+faultyprior = 0.33;
 if noise
     evaldata(:,3) = evaldata(:,3) + rand(length(evaldata),1)*1-1;
 end
@@ -32,7 +33,7 @@ for it = 1:length(SigmaSet)
     likelihood{it} = sum(reshape(r_vector,N_eval,N),2);
 end
 if noise
-    fault_evaluation_noisy = likelihood{2}./(likelihood{1}+likelihood{2});
+    fault_evaluation_noisy = likelihood{2}*faultyprior./(likelihood{1}*(1-faultyprior)+likelihood{2}*faultyprior);
 else
-    fault_evaluation = likelihood{2}./(likelihood{1}+likelihood{2});
+    fault_evaluation = likelihood{2}*faultyprior./(likelihood{1}*(1-faultyprior)+likelihood{2}*faultyprior);
 end
