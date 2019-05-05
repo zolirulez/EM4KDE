@@ -6,16 +6,17 @@ clearvars
 dataswitch = 0;
 
 %% Apply KDE
-% faultswitch = 0;
+faultswitch = 0;
+kde
 % em_vectorized
 % faultswitch = 1;
 % em_vectorized
 %% Plot
 % plotting
 %% Classify
-noise = 0;
-classifier
-noise = 1;
-classifier
+% noise = 0;
+% classifier
+% noise = 1;
+% classifier
 %% Evaluate classification
-evaluation
+% evaluation
