@@ -165,7 +165,7 @@ density = sum(reshape(r_vector,N_eval,N),2);
 %% Evaulation
 figure(3)
 [X,Y,T,AUC] = perfcurve([zeros(N_eval/2,1); ones(N_eval/4,1)],...
-    [1-density(1:N_eval/2); 1-density(N_eval/2+1:N_eval/4*3)],1);
+    [1-density(1:N_eval/2)./max(density(1:N_eval/2)); 1-density(N_eval/2+1:N_eval/4*3)./max(density(N_eval/2+1:N_eval/4*3))],1);
 plot(X,Y)
 hold on
 plot([0 1],[0 Y(end)])
@@ -173,7 +173,7 @@ hold off
 title(['KDE, ROC for 5 degrees deviation, AUC: ' num2str(AUC)])
 figure(4)
 [X,Y,T,AUC] = perfcurve([zeros(N_eval/2,1); ones(N_eval/4,1)],...
-    [1-density(1:N_eval/2); 1-density(N_eval/4*3+1:end)],1);
+    [1-density(1:N_eval/2)./max(density(1:N_eval/2)); 1-density(N_eval/4*3+1:end)./max(density(N_eval/4*3+1:end))],1);
 plot(X,Y)
 hold on
 plot([0 1],[0 Y(end)])
@@ -182,9 +182,9 @@ title(['KDE, ROC for 20 degrees deviation, AUC: ' num2str(AUC)])
 %% Density evaluation of evaluation data set, EMKDE
 load phT
 data = normalstates;
-load phT_eval
+load phT_eval_forkde
 load SigmaNormal
-evaldata = [normalstates; faultystates2; faultystates5];
+evaldata = [normalstates; faultystates5; faultystates20];
 N = length(data);
 N_eval = length(evaldata);
 delta_data_ver1 = repmat(evaldata,1,N);
@@ -207,7 +207,7 @@ density = sum(reshape(r_vector,N_eval,N),2);
 %% Evaulation, EMKDE
 figure(5)
 [X,Y,T,AUC] = perfcurve([zeros(N_eval/2,1); ones(N_eval/4,1)],...
-    [1-density(1:N_eval/2); 1-density(N_eval/2+1:N_eval/4*3)],1);
+    [1-density(1:N_eval/2)/max(density(1:N_eval/2)); 1-density(N_eval/2+1:N_eval/4*3)./max(density(N_eval/2+1:N_eval/4*3))],1);
 plot(X,Y)
 hold on
 plot([0 1],[0 Y(end)])
@@ -215,7 +215,7 @@ hold off
 title(['EMKDE, ROC for 5 degrees deviation, AUC: ' num2str(AUC)])
 figure(6)
 [X,Y,T,AUC] = perfcurve([zeros(N_eval/2,1); ones(N_eval/4,1)],...
-    [1-density(1:N_eval/2); 1-density(N_eval/4*3+1:end)],1);
+    [1-density(1:N_eval/2)./max(density(1:N_eval/2)); 1-density(N_eval/4*3+1:end)./max(density(N_eval/4*3+1:end))],1);
 plot(X,Y)
 hold on
 plot([0 1],[0 Y(end)])
