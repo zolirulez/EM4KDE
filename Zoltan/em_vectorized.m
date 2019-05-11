@@ -53,61 +53,67 @@ max_iter = 1000;
 LL = NaN(max_iter,initializations);
 
 %% Loop until you're happy
-% r = zeros(N_test,K);
-% Sigma = eye(D);
-% Sigmas = zeros(2,2,nfolds);
-% log_likelihood = zeros(nfolds, 1);
-% CV = cvpartition(N, 'kfold',nfolds);
-% tic
-% for iter = 1:max_iter
-%     fprintf('Iteration: %d\n', iter);
-%     %% Compute responsibilities
-%     for fold = 1:nfolds
-%         R = chol(Sigma,'upper');
-%         gain = 1/((2*pi)^(D/2)*det(R))/N_train;
-%         mu = data(CV.training(fold),:);
-%         data2 = data(CV.test(fold),:);
-%         for k = 1:K
-%             m = (data2 - mu(k,:))/R;
-%             r(:,k) = gain*exp(-0.5*sum(m.*m,2));
-%         end
-%         rn = r./sum(r,2);
-%         %% Update parameters
-%         Sigma_sum = zeros(2,2);
-%         for k = 1:K
-%             Sigma_sum = Sigma_sum + ((rn(:,k).*(data2-mu(k,:)))'*(data2-mu(k,:)));
-%         end
-%         Sigmas(:,:,fold) = 1/N_test*Sigma_sum;
-%         
-%         %% Compute log-likelihood of data
-%         %log_likelihood(fold) = sum(log(sum(r,2)),1);
-%         tmp_var = zeros(N_test, N_train);
-%         for k = 1:K
-%             tmp_var(:,k) = tmp_var(:,k)  + mvnpdf(data2, mu(k,:), Sigmas(:,:,fold)) * pi_k;
-%         end
-%         log_likelihood(fold) = sum(log(sum(tmp_var,2)),1);
-%     end
-%     % Extract the maximum likelihood sigma of the 10 folds
-%     [maxLL, maxIdx] = max(log_likelihood);
-%     LL(iter) = maxLL;
-%     
-%     % Put the MLE of sigma
-%     Sigma = Sigmas(:,:,maxIdx);
-%     log_likelihood = zeros(nfolds,1);
-%     % End...
-%     if iter > 5
-%         if norm(pdist(LL(iter-4:iter)'),'inf') < 1e-12 % diff is faster!!
-%             break;
-%         end
-%     end
-% end % for
-% toc
-% Sigma
+r = zeros(N_test,K);
+Sigma = Sigma_init{1};
+Sigmas = zeros(D,D,nfolds);
+log_likelihood = zeros(nfolds, 1);
+CV = cvpartition(N, 'kfold',nfolds);
+tic
+t = cputime
+for iter = 1:max_iter
+    fprintf('Iteration: %d\n', iter);
+    %% Compute responsibilities
+    for fold = 1:nfolds
+        R = chol(Sigma,'upper');
+        gain = 1/((2*pi)^(D/2)*det(R))/N_train;
+        mu = data(CV.training(fold),:);
+        data2 = data(CV.test(fold),:);
+        for k = 1:K
+            m = (data2 - mu(k,:))/R;
+            r(:,k) = gain*exp(-0.5*sum(m.*m,2));
+        end
+        lnC = -max(r);
+        r = r + lnC;
+        rn = r./sum(r,2);
+        %% Update parameters
+        Sigma_sum = zeros(D,D);
+        for k = 1:K
+            Sigma_sum = Sigma_sum + ((rn(:,k).*(data2-mu(k,:)))'*(data2-mu(k,:)));
+        end
+        Sigmas(:,:,fold) = 1/N_test*Sigma_sum;
+        
+        %% Compute log-likelihood of data
+        %log_likelihood(fold) = sum(log(sum(r,2)),1);
+        tmp_var = zeros(N_test, N_train);
+        for k = 1:K
+            tmp_var(:,k) = tmp_var(:,k)  + mvnpdf(data2, mu(k,:), Sigmas(:,:,fold)) * pi_k;
+        end
+        log_likelihood(fold) = sum(log(sum(tmp_var,2)),1);
+    end
+    % Extract the maximum likelihood sigma of the 10 folds
+    [maxLL, maxIdx] = max(log_likelihood);
+    LL(iter) = maxLL;
+    
+    % Put the MLE of sigma
+    Sigma = Sigmas(:,:,maxIdx);
+    log_likelihood = zeros(nfolds,1);
+    % End...
+    if iter > 5
+        if norm(pdist(LL(iter-4:iter)'),'inf') < 1e-12 % diff is faster!!
+            break;
+        end
+    end
+end % for
+toc
+display('cputime')
+cputime-t
+Sigma
 r_vector = zeros(N_test,K,nfolds);
 Sigmas = zeros(D,D,nfolds);
 log_likelihood = zeros(nfolds, 1);
 maxIdx = 1;
 tic
+t = cputime
 % Preparation of data
 delta_x_ver3 = cell(nfolds,1);
 for init = 1:initializations
@@ -171,14 +177,16 @@ end % for initilizations
 [maxLL, maxIdx] = max(LL(end,:));
 Sigma = Sigma_init{maxIdx};
 toc
+display('cputime')
+cputime-t
 
-switch dataswitch
-    case 0
-        if faultswitch
-            SigmaFaulty = Sigma;
-            save('SigmaFaulty','SigmaFaulty');
-        else
-            SigmaNormal = Sigma;
-            save('SigmaNormal','SigmaNormal');
-        end
-end
+% switch dataswitch
+%     case 0
+%         if faultswitch
+%             SigmaFaulty = Sigma;
+%             save('SigmaFaulty','SigmaFaulty');
+%         else
+%             SigmaNormal = Sigma;
+%             save('SigmaNormal','SigmaNormal');
+%         end
+% end
